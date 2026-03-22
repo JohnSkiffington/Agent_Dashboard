@@ -206,6 +206,67 @@ def get_active_session_ids():
     return [r["session_id"] for r in rows]
 
 
+def get_monthly_summary():
+    """Get token and cost totals for the current month, plus daily breakdown."""
+    conn = get_conn()
+    import calendar
+    now = time.localtime()
+    month_start_ms = int(time.mktime((now.tm_year, now.tm_mon, 1, 0, 0, 0, 0, 0, -1)) * 1000)
+
+    # Monthly totals
+    row = conn.execute("""
+        SELECT
+            COUNT(DISTINCT s.session_id) as session_count,
+            COALESCE(SUM(t.total_input_tokens), 0) as input_tokens,
+            COALESCE(SUM(t.total_output_tokens), 0) as output_tokens,
+            COALESCE(SUM(t.total_cache_read), 0) as cache_read,
+            COALESCE(SUM(t.total_cache_create), 0) as cache_create,
+            COALESCE(SUM(t.estimated_cost_usd), 0) as total_cost
+        FROM sessions s
+        LEFT JOIN token_totals t ON s.session_id = t.session_id
+        WHERE s.started_at >= ?
+    """, (month_start_ms,)).fetchone()
+
+    # Daily breakdown for the current month
+    days = []
+    _, days_in_month = calendar.monthrange(now.tm_year, now.tm_mon)
+    for day in range(1, days_in_month + 1):
+        day_start_ms = int(time.mktime((now.tm_year, now.tm_mon, day, 0, 0, 0, 0, 0, -1)) * 1000)
+        day_end_ms = day_start_ms + 86400000
+        day_row = conn.execute("""
+            SELECT
+                COUNT(DISTINCT s.session_id) as sessions,
+                COALESCE(SUM(t.total_input_tokens), 0) + COALESCE(SUM(t.total_cache_read), 0) as input_tokens,
+                COALESCE(SUM(t.total_output_tokens), 0) as output_tokens,
+                COALESCE(SUM(t.estimated_cost_usd), 0) as cost
+            FROM sessions s
+            LEFT JOIN token_totals t ON s.session_id = t.session_id
+            WHERE s.started_at >= ? AND s.started_at < ?
+        """, (day_start_ms, day_end_ms)).fetchone()
+
+        if day_row["sessions"] > 0:
+            days.append({
+                "date": f"{now.tm_year}-{now.tm_mon:02d}-{day:02d}",
+                "sessions": day_row["sessions"],
+                "input_tokens": day_row["input_tokens"],
+                "output_tokens": day_row["output_tokens"],
+                "cost": round(day_row["cost"], 2),
+            })
+
+    conn.close()
+
+    return {
+        "month": f"{now.tm_year}-{now.tm_mon:02d}",
+        "session_count": row["session_count"],
+        "input_tokens": row["input_tokens"],
+        "output_tokens": row["output_tokens"],
+        "cache_read": row["cache_read"],
+        "cache_create": row["cache_create"],
+        "total_cost": round(row["total_cost"], 2),
+        "days": days,
+    }
+
+
 if __name__ == "__main__":
     init_db()
     print(f"Database initialized at {DB_PATH}")

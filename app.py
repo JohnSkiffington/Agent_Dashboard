@@ -55,12 +55,15 @@ def api_sessions():
             if s.get("started_at", 0) >= today_start_ms:
                 total_cost_today += s.get("estimated_cost_usd") or 0.0
 
+    monthly = db.get_monthly_summary()
+
     return jsonify({
         "projects": dict(sorted(projects.items())),
         "summary": {
             "total_active": total_active,
             "total_cost_today_usd": round(total_cost_today, 2),
         },
+        "monthly": monthly,
     })
 
 

@@ -140,6 +140,61 @@ function renderProject(name, project) {
     `;
 }
 
+function renderMonthly(monthly) {
+    if (!monthly) return "";
+
+    const monthName = new Date(monthly.month + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const totalIn = (monthly.input_tokens || 0) + (monthly.cache_read || 0);
+    const totalOut = monthly.output_tokens || 0;
+    const sessions = monthly.session_count || 0;
+    const days = monthly.days || [];
+
+    // Build bar chart
+    const maxCost = Math.max(...days.map(d => d.cost), 0.01);
+    let barsHtml = "";
+    if (days.length > 0) {
+        barsHtml = days.map(d => {
+            const height = Math.max(2, (d.cost / maxCost) * 44);
+            const label = `${d.date}: ${d.sessions} sessions, $${d.cost.toFixed(2)}`;
+            return `<div class="daily-bar" style="height: ${height}px" title="${escapeHtml(label)}"></div>`;
+        }).join("");
+    }
+
+    const firstDay = days.length > 0 ? days[0].date.split("-")[2] : "";
+    const lastDay = days.length > 0 ? days[days.length - 1].date.split("-")[2] : "";
+
+    return `
+        <div class="monthly-card">
+            <div class="monthly-header">
+                <span class="monthly-title">${escapeHtml(monthName)}</span>
+                <span class="monthly-cost">${formatCost(monthly.total_cost)}</span>
+            </div>
+            <div class="monthly-stats">
+                <div class="monthly-stat">
+                    <span class="stat-label">Sessions</span>
+                    <span class="stat-value">${sessions}</span>
+                </div>
+                <div class="monthly-stat">
+                    <span class="stat-label">Input tokens</span>
+                    <span class="stat-value">${formatTokens(totalIn)}</span>
+                </div>
+                <div class="monthly-stat">
+                    <span class="stat-label">Output tokens</span>
+                    <span class="stat-value">${formatTokens(totalOut)}</span>
+                </div>
+            </div>
+            ${days.length > 0 ? `
+                <div class="daily-bar-chart">${barsHtml}</div>
+                <div class="daily-bar-label">
+                    <span>${firstDay}</span>
+                    <span>daily cost</span>
+                    <span>${lastDay}</span>
+                </div>
+            ` : ""}
+        </div>
+    `;
+}
+
 function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
@@ -160,6 +215,9 @@ async function refresh() {
 
         document.getElementById("cost-today").textContent =
             formatCost(data.summary.total_cost_today_usd) + " today";
+
+        // Render monthly summary
+        document.getElementById("monthly-summary").innerHTML = renderMonthly(data.monthly);
 
         // Render projects
         const dashboard = document.getElementById("dashboard");

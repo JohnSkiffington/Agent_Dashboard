@@ -271,6 +271,95 @@ main {
     color: var(--text-muted);
 }
 
+/* Monthly Summary */
+.monthly-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 0 16px 16px;
+    padding: 16px 18px;
+    max-width: 928px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.monthly-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+}
+
+.monthly-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+}
+
+.monthly-cost {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.monthly-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.monthly-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.monthly-stat .stat-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.monthly-stat .stat-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.daily-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 48px;
+    margin-top: 8px;
+}
+
+.daily-bar {
+    flex: 1;
+    min-width: 4px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+    opacity: 0.7;
+    position: relative;
+}
+
+.daily-bar:hover {
+    opacity: 1;
+}
+
+.daily-bar-label {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 9px;
+    color: var(--text-muted);
+}
+
 /* Responsive: two columns on wider screens */
 @media (min-width: 680px) {
     main {
