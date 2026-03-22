@@ -1,22 +1,31 @@
 #!/bin/bash
 set -euo pipefail
 
-DASH_DIR="$HOME/DEV/TOOLS/AGENT-DASH"
+# Agent Dashboard Uninstaller
+# Works from wherever the repo is cloned.
+
+DASH_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLIST_NAME="com.agentdash.server"
 PLIST_DEST="$HOME/Library/LaunchAgents/${PLIST_NAME}.plist"
-PYTHON3=$(which python3)
 
 echo "=== Agent Dashboard Uninstaller ==="
+echo ""
 
 # 1. Stop and remove launchd service
-echo "[1/3] Stopping service..."
-launchctl bootout "gui/$(id -u)/$PLIST_NAME" 2>/dev/null || true
-rm -f "$PLIST_DEST"
-echo "  Service removed."
+if [[ "$OSTYPE" == darwin* ]]; then
+    echo "[1/3] Stopping background service..."
+    launchctl bootout "gui/$(id -u)/$PLIST_NAME" 2>/dev/null || true
+    rm -f "$PLIST_DEST"
+    echo "  Service removed."
+else
+    echo "[1/3] Stopping server process..."
+    pkill -f "python3.*app.py" 2>/dev/null || true
+    echo "  Done."
+fi
 
 # 2. Remove hooks from settings.json
 echo "[2/3] Removing Claude Code hooks..."
-$PYTHON3 -c "
+python3 -c "
 import json, os
 
 settings_path = os.path.expanduser('~/.claude/settings.json')
@@ -32,7 +41,10 @@ modified = False
 for event in ['SessionStart', 'Stop', 'PostToolUse']:
     if event in hooks:
         before = len(hooks[event])
-        hooks[event] = [h for h in hooks[event] if 'AGENT-DASH' not in h.get('command', '')]
+        hooks[event] = [
+            h for h in hooks[event]
+            if 'AGENT-DASH' not in h.get('command', '') and 'agent-dash' not in h.get('command', '')
+        ]
         if len(hooks[event]) < before:
             modified = True
             print(f'  Removed {event} hook')
@@ -50,9 +62,11 @@ else:
     print('  No hooks found to remove.')
 "
 
-# 3. Note about data
+# 3. Cleanup notes
 echo "[3/3] Cleanup notes:"
 echo "  Database preserved at: $DASH_DIR/dashboard.db"
-echo "  To fully remove: rm -rf $DASH_DIR"
+echo "  Logs preserved at:     $DASH_DIR/logs/"
+echo ""
+echo "  To remove all data:    rm -rf $DASH_DIR"
 echo ""
 echo "=== Uninstall Complete ==="
